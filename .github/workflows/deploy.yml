@@ -1,0 +1,42 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Website to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Remove old website files
+            sudo rm -rf /var/www/html/*
+
+            # Clone the latest code from GitHub
+            cd /tmp
+            rm -rf GiHub_CI_CD
+            git clone https://github.com/${{ github.repository }}.git GiHub_CI_CD
+
+            # Copy website files to nginx web root
+            sudo cp -r GiHub_CI_CD/* /var/www/html/
+
+            # Set correct permissions
+            sudo chown -R www-data:www-data /var/www/html/
+            sudo chmod -R 755 /var/www/html/
+
+            # Restart nginx to apply changes
+            sudo systemctl restart nginx
+
+            echo "Deployment completed successfully!"
